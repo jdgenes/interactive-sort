@@ -1,5 +1,4 @@
 # Interactive Sort
----
 *Developed and tested on Ubuntu 20.04.2, with no current plans to support other operating systems.*
 ##
 **Requirements to run**
