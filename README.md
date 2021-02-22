@@ -3,9 +3,9 @@
 *Developed and tested on Ubuntu 20.04.2, with no current plans to support other operating systems.*
 ##
 **Requirements to run**
-    * Python 3
-    * Kitty terminal
-    * ImageMagick
+* Python 3
+* Kitty terminal
+* ImageMagick
 
 *Interactive Sort* uses Python's curses library to show you one image at a time in your terminal, and prompts you to press a key to move the image to the directory assigned to that key. You can add and remove keys by navigating through the menu.
 
