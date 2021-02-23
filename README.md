@@ -10,6 +10,9 @@
 
 I made this after looking around for a program that would do something in a similar way, and couldn't find one. The purpose of this program is to emphasize using a single keystroke after being shown an image to speed up the process of organizing images, and to avoid hassle of double clicking, or clicking-and-dragging.
 ##
+#### Usage
+Just download and run the python script with python3, then use the arrow keys and enter to navigate.
+##
 #### Development
 
 Contributions are welcome! This is the first draft of this program, rough but usable.
