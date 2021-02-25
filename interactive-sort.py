@@ -8,13 +8,11 @@ from subprocess import call
 import glob
 import os
  
-
 WK_DIR = 'unset'
 SORT_KEYS = {
     }
 MENU = ['Start', 'Choose Directory', 'Add Sorting Key', 'Remove Sorting Key', 'Quit']
 keyPass = ''
-
 # all ImageMagick file formats supported, TODO: add rest of supported formats
 imgFormats = ['png', 'jpg', 'jpeg', 'tif', 'tiff', 'gif', 'svg', 'tga']
 
@@ -55,7 +53,6 @@ def chooseDirMenu(window, getDir, selection, dirGroup, context):
         break
     try:
         walkDirs = scrollDirs(walkDirs[0])
-        # window.addstr(str(walkDirs))
     except IndexError:
         window.addstr(str(walk))
         window.addstr(walkDirs)
@@ -134,13 +131,14 @@ def chooseDirMenu(window, getDir, selection, dirGroup, context):
     else:
         chooseDirMenu(window, getDir, selection, dirGroup, context)
 
+# helper function to show the current sorting keys set by the user
 def showKeys(window):
     if SORT_KEYS != {}:
         window.addstr('keys:\n', curses.color_pair(2))
         for i in SORT_KEYS:
             window.addstr(str(i, 'utf-8') + ': -> ' + str(SORT_KEYS[i]) + '\n', curses.color_pair(2))
         window.addstr('\n')
-
+# helper function to show the current working directory
 def showWkDir(window):
     if WK_DIR != 'unset':
         window.addstr('image directory:\n' + str(WK_DIR) + '\n\n', curses.color_pair(3))
@@ -235,6 +233,7 @@ def mainMenu(window, firstRun, selection):
     else:
         mainMenu(window, False, selection)
 
+# helper funciton for the main menu handles user choice
 def mainSelect(window, selection):
     if selection == 0:
         if WK_DIR == 'unset':
@@ -257,7 +256,7 @@ def mainSelect(window, selection):
     if selection == 4:
         endProg(window)
 
-# TODO: add warnings for duplicate filenames in target directory before attempting to move the file, give chance to skip or rename 
+# this function handles the main logic of moving the files according to user feedback
 def imgAction(window, keyPressed, img):
     window.clear()
     window.addstr('\n\n')
@@ -268,11 +267,18 @@ def imgAction(window, keyPressed, img):
     if keyPressed in SORT_KEYS:
         imgFrom = str(img)
         imgTo = str(SORT_KEYS[keyPressed])
-        call(["mv", imgFrom, imgTo])
-        window.clear()
-        window.addstr('moved to' + str(SORT_KEYS[keyPressed]) + '\n\n')
-        showWkDir(window)
-        showKeys(window)
+        existingFilePaths = glob.glob(imgTo + '/*')
+        existingFileNames = []
+        for file in existingFilePaths:
+            existingFileNames.append(os.path.basename(file))
+        if os.path.basename(imgFrom) in existingFileNames:
+            overWriteWarning(window, imgFrom, imgTo, 1, keyPressed, existingFileNames, True)
+        else:
+            call(["mv", imgFrom, imgTo])
+            window.clear()
+            window.addstr('moved to' + str(SORT_KEYS[keyPressed]) + '\n\n')
+            showWkDir(window)
+            showKeys(window)
     elif str(keyPressed, 'utf-8') == '.':
         window.addstr('')
     elif str(keyPressed, 'utf-8') == 'q':
@@ -284,6 +290,31 @@ def imgAction(window, keyPressed, img):
             imgAction(window, keyPressed2, img)
         except curses.error:
             pass
+
+# handles the event of a file with the same name is sorted into a folder
+def overWriteWarning(window, imgFrom, imgTo, fileNum, keyPressed, existingFileNames, firstRun):
+    window.clear()
+    window.addstr(str(os.path.basename(imgFrom)) + ' already exists in ' + imgTo + '.\nRename file: \'y\'\nSkip: \'.\'\n')
+    if firstRun == True:
+        choice = window.getkey()
+    else:
+        choice = 'y'
+    if choice == 'y':
+        extSplit = os.path.splitext(imgFrom)
+        renamedFile = extSplit[0] + '(' + str(fileNum) + ')' + extSplit[1]
+        # if the renamed file with (num) added already exists, add to num
+        if os.path.basename(renamedFile) in existingFileNames:
+            overWriteWarning(window, imgFrom, imgTo, fileNum + 1, keyPressed, existingFileNames, False)
+        else:
+            call(["mv", imgFrom, imgTo + '/' + str(os.path.basename(renamedFile))])
+            window.clear()
+            window.addstr('moved to' + str(SORT_KEYS[keyPressed]) + '\n\n')
+            showWkDir(window)
+            showKeys(window)
+    elif choice == '.':
+        window.addstr('')
+    else:
+        overWriteWarning(window, imgFrom, imgTo, fileNum, keyPressed, existingFileNames, firstRun)
 
 def displayImg(window):
     window.addstr('\n\n')
