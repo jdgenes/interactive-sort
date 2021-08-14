@@ -1,19 +1,23 @@
 # Requires ImageMagick and Kitty terminal
-# This program uses Python's curses library to show you one image at a time in your terminal, and prompts you to press a key to move the image to the directory assigned to that key. You can add and remove keys by navigating through the menu.
+#
+    #  This program uses Python's curses library to show you one image at
+    #  a time in your terminal, and prompts you to press a key to move the
+    #  image to the directory assigned to that key. You can add and remove keys
+    #  by navigating through the menu.
 
+import os
+import glob
+from subprocess import call
 import curses
 from curses import wrapper
-from os.path import join
-from subprocess import call
-import glob
-import os
  
-WK_DIR = 'unset'
-SORT_KEYS = {
-    }
 MENU = ['Start', 'Choose Directory', 'Add Sorting Key', 'Remove Sorting Key', 'Quit']
+
+workingDirectory = 'unset'
+sortKeys = {
+    }
 keyPass = ''
-# all ImageMagick file formats supported, TODO: add rest of supported formats
+# All ImageMagick file formats supported, TODO: add rest of supported formats
 imgFormats = ['png', 'jpg', 'jpeg', 'tif', 'tiff', 'gif', 'svg', 'tga']
 
 def getImages(imgDir):
@@ -22,7 +26,7 @@ def getImages(imgDir):
         imgs.extend(list(glob.glob(str(imgDir) + '/*.' + i)))
     return imgs
 
-def scrollDirs(dirList):
+def scrollDirectory(dirList):
     scrollList = []
     for i in range(1, (len(dirList)//10)+2):
         scrollList.append([])
@@ -35,24 +39,25 @@ def scrollDirs(dirList):
         index += 1
     return scrollList
 
-# this function works for both choosing the dir for keys and for the working directory by the 'context' argument
+# This function works for both choosing the dir for keys and for the working directory by the 'context' argument
 def chooseDirMenu(window, getDir, selection, dirGroup, context):
     context = context
     selection = selection
     window.clear()
     window.addstr('- Choose Directory\n- Press backspace to return to main menu.\n\n')
-    showWkDir(window)
+    showWorkingDirectory(window)
     newDir = ''
     walk = os.walk(getDir)
     walkDirs = []
     walkRoot = []
     dirGroup = dirGroup
+
     for root, dirs, files in walk:
         walkDirs.append(dirs)
         walkRoot.append(root)
         break
     try:
-        walkDirs = scrollDirs(walkDirs[0])
+        walkDirs = scrollDirectory(walkDirs[0])
     except IndexError:
         window.addstr(str(walk))
         window.addstr(walkDirs)
@@ -68,13 +73,9 @@ def chooseDirMenu(window, getDir, selection, dirGroup, context):
             dirGroup == 0
         else:
             dirGroup += 1
-    # test
-    # window.addstr('\n\n***test***\n')
-    # window.addstr('walkDirs length: ' + str(len(walkDirs)) + '\nwalkDirs[dirGroup] length: ' + str(len(walkDirs[dirGroup])) + '\ndirGroup: ' + str(dirGroup) + '\n')
-    # window.addstr('selection: ' + str(selection))
-    # window.addstr('\n***test***\n\n')
-    # /test
+
     window.addstr(os.path.realpath(root) + '\n---------\n\n')
+    
     # add more indicator if dirGroup > 0
     if dirGroup > 0:
         window.addstr(u"\u25B2..." + '\n')
@@ -124,8 +125,8 @@ def chooseDirMenu(window, getDir, selection, dirGroup, context):
                 keyPass = os.path.abspath(getDir + '/' + walkDirs[dirGroup][selection])
             else:
                 window.clear()
-                global WK_DIR
-                WK_DIR = os.path.abspath(getDir + '/' + 
+                global workingDirectory
+                workingDirectory = os.path.abspath(getDir + '/' + 
                 walkDirs[dirGroup][selection])
                 mainMenu(window, True, 0)
     else:
@@ -133,32 +134,35 @@ def chooseDirMenu(window, getDir, selection, dirGroup, context):
 
 # helper function to show the current sorting keys set by the user
 def showKeys(window):
-    if SORT_KEYS != {}:
+    if sortKeys != {}:
         window.addstr('keys:\n', curses.color_pair(2))
-        for i in SORT_KEYS:
-            window.addstr(str(i, 'utf-8') + ': -> ' + str(SORT_KEYS[i]) + '\n', curses.color_pair(2))
+        for i in sortKeys:
+            window.addstr(str(i, 'utf-8') + ': -> ' + str(sortKeys[i]) + '\n', curses.color_pair(2))
         window.addstr('\n')
 # helper function to show the current working directory
-def showWkDir(window):
-    if WK_DIR != 'unset':
-        window.addstr('image directory:\n' + str(WK_DIR) + '\n\n', curses.color_pair(3))
+def showWorkingDirectory(window):
+    if workingDirectory != 'unset':
+        window.addstr('image directory:\n' + str(workingDirectory) + '\n\n', curses.color_pair(3))
 
 def addKeyMenu(window):
     window.clear()
     window.addstr('Add a sorting key.\nThis is a directory that images go\nwhen you press the key you choose.\n\nPress any a-z or 1-9 character\nto add a key.\n\nPress backspace to return to main menu.\n\n')
     showKeys(window)
     key = window.getch()
+
     if key == curses.KEY_BACKSPACE:
         mainMenu(window, True, 0)
+
     key = curses.unctrl(key)
+
     if key.isalnum():
-        if key not in SORT_KEYS:
+        if key not in sortKeys:
             window.clear()
             window.addstr('Now choose the directory\nthis key moves images to.')
             window.getch()
             chooseDirMenu(window, '.', 0, 0, 'key')
             keyDir = keyPass
-            SORT_KEYS.setdefault(key, keyDir)
+            sortKeys.setdefault(key, keyDir)
             mainMenu(window, True, 0)
     else:
         window.clear()
@@ -170,12 +174,12 @@ def addKeyMenu(window):
 def removeKeyMenu(window, selection):
     window.clear()
     window.addstr('Press backspace to go to main menu\n\n')
-    global SORT_KEYS
-    if SORT_KEYS == {}:
+    global sortKeys
+    if sortKeys == {}:
         window.addstr('No sorting keys added yet...\n')
         window.getch()
         mainMenu(window, True, 0)
-    sortKeys = list(SORT_KEYS)
+    sortKeys = list(sortKeys)
     if selection <= -1:
         selection = len(sortKeys) - 1
     if selection >= len(sortKeys):
@@ -183,9 +187,9 @@ def removeKeyMenu(window, selection):
     try:
         for keys in sortKeys:
             if sortKeys.index(keys) == selection:
-                window.addstr(str(keys) + ': -> ' + str(SORT_KEYS[keys]) + '\n', curses.color_pair(1))
+                window.addstr(str(keys) + ': -> ' + str(sortKeys[keys]) + '\n', curses.color_pair(1))
             else:
-                window.addstr(str(keys) + ': -> ' + str(SORT_KEYS[keys]) + '\n')
+                window.addstr(str(keys) + ': -> ' + str(sortKeys[keys]) + '\n')
     except curses.error:
         pass
     keyPressed = window.getch()
@@ -196,7 +200,7 @@ def removeKeyMenu(window, selection):
     elif keyPressed == curses.KEY_UP:
         removeKeyMenu(window, selection -1)
     elif keyPressed == curses.KEY_ENTER or keyPressed == 10 or keyPressed == 13:
-        del SORT_KEYS[sortKeys[selection]]
+        del sortKeys[sortKeys[selection]]
         window.clear()
         window.addstr('key removed')
         window.getch()
@@ -220,7 +224,7 @@ def mainMenu(window, firstRun, selection):
         else:
             window.addstr(i + '\n')
     window.addstr('\n\n')
-    showWkDir(window)
+    showWorkingDirectory(window)
     showKeys(window)
     keyPressed = window.getch()
     if keyPressed == curses.KEY_DOWN:
@@ -236,7 +240,7 @@ def mainMenu(window, firstRun, selection):
 # helper funciton for the main menu handles user choice
 def mainSelect(window, selection):
     if selection == 0:
-        if WK_DIR == 'unset':
+        if workingDirectory == 'unset':
             window.clear()
             window.addstr('Please select a directory first.')
             window.getch()
@@ -245,28 +249,28 @@ def mainSelect(window, selection):
             window.clear()
             displayImg(window)
     if selection == 1:
-        if WK_DIR == 'unset':
+        if workingDirectory == 'unset':
             chooseDirMenu(window, '.', 0, 0, 'working')
         else:
-            chooseDirMenu(window, WK_DIR, 0, 0, 'working')
+            chooseDirMenu(window, workingDirectory, 0, 0, 'working')
     if selection == 2:
         addKeyMenu(window)
     if selection == 3:
         removeKeyMenu(window, 0)
     if selection == 4:
-        endProg(window)
+        endProgram(window)
 
 # this function handles the main logic of moving the files according to user feedback
 def imgAction(window, keyPressed, img):
     window.clear()
     window.addstr('\n\n')
-    showWkDir(window)
+    showWorkingDirectory(window)
     showKeys(window)
     window.addstr('\'.\': skip\n')
     window.addstr('\'q\': quit to main menu\n')
-    if keyPressed in SORT_KEYS:
+    if keyPressed in sortKeys:
         imgFrom = str(img)
-        imgTo = str(SORT_KEYS[keyPressed])
+        imgTo = str(sortKeys[keyPressed])
         existingFilePaths = glob.glob(imgTo + '/*')
         existingFileNames = []
         for file in existingFilePaths:
@@ -276,8 +280,8 @@ def imgAction(window, keyPressed, img):
         else:
             call(["mv", imgFrom, imgTo])
             window.clear()
-            window.addstr('moved to' + str(SORT_KEYS[keyPressed]) + '\n\n')
-            showWkDir(window)
+            window.addstr('moved to' + str(sortKeys[keyPressed]) + '\n\n')
+            showWorkingDirectory(window)
             showKeys(window)
     elif str(keyPressed, 'utf-8') == '.':
         window.addstr('')
@@ -308,8 +312,8 @@ def overWriteWarning(window, imgFrom, imgTo, fileNum, keyPressed, existingFileNa
         else:
             call(["mv", imgFrom, imgTo + '/' + str(os.path.basename(renamedFile))])
             window.clear()
-            window.addstr('moved to' + str(SORT_KEYS[keyPressed]) + '\n\n')
-            showWkDir(window)
+            window.addstr('moved to' + str(sortKeys[keyPressed]) + '\n\n')
+            showWorkingDirectory(window)
             showKeys(window)
     elif choice == '.':
         window.addstr('')
@@ -318,9 +322,9 @@ def overWriteWarning(window, imgFrom, imgTo, fileNum, keyPressed, existingFileNa
 
 def displayImg(window):
     window.addstr('\n\n')
-    showWkDir(window)
+    showWorkingDirectory(window)
     showKeys(window)
-    imgs = getImages(WK_DIR)
+    imgs = getImages(workingDirectory)
     window.addstr('\'.\': skip\n')
     window.addstr('\'q\': quit to main menu\n')
     for img in imgs:
@@ -336,7 +340,7 @@ def displayImg(window):
     call(["kitty", "+kitten", "icat", "--clear"])
     mainMenu(window, True, 0)
 
-def endProg(window):
+def endProgram(window):
     curses.nocbreak()
     window.keypad(False)
     curses.echo()
